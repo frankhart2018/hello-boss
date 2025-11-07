@@ -3,7 +3,10 @@ name = "hello-boss"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "bson>=0.5.10",
+    "bson-py>=1.0.0",
     "fastapi==0.112.0",
     "pydantic==2.8.2",
+    "pymongo>=4.15.3",
     "uvicorn>=0.38.0",
 ]
