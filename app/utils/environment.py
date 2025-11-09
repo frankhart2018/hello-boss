@@ -8,5 +8,5 @@ def get_required_env(key: str) -> str:
     return os.getenv(key)
 
 
-OUTPUT_DIR = get_required_env("OUTPUT_DIR")
+OUTPUT_DIR = os.path.join(get_required_env("OUTPUT_DIR"), "static")
 os.makedirs(OUTPUT_DIR, exist_ok=True)

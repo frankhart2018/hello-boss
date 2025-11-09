@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from datetime import datetime, timezone
@@ -74,7 +74,7 @@ def mongodb_backup(uri: str, output_dir: str) -> dict:
 
 
 @router.get("/mongo")
-async def backup_mongo(name: str, port: int):
+async def backup_mongo(name: str, port: int, request: Request):
     this_name = (
         f"mongo-{name}-{port}-{int(datetime.now(tz=timezone.utc).timestamp() * 1000)}"
     )
@@ -93,4 +93,7 @@ async def backup_mongo(name: str, port: int):
 
     shutil.rmtree(output_dir)
 
-    return {"backup_summary": backup_summary, "output_filename": output_filename}
+    return {
+        "backup_summary": backup_summary,
+        "output_filename": os.path.join(request.base_url._url, output_filename),
+    }
