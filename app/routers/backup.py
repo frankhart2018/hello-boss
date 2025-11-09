@@ -135,3 +135,15 @@ async def backup_dir(name: str, remote_path: str, request: Request):
             request.base_url._url, os.path.join(STATIC_DIR, f"{this_name}.tar.gz")
         )
     }
+
+
+@router.get("/delete")
+async def delete_backup(tarball_name: str):
+    backup_path = os.path.join(STATIC_DIR, tarball_name)
+
+    if not os.path.exists(backup_dir):
+        raise HTTPException(status_code=404, detail=f"'{backup_path}' does not exist!")
+
+    os.remove(backup_path)
+
+    return {"status": "success"}
