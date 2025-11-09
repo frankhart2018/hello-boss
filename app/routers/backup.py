@@ -8,7 +8,7 @@ from bson import json_util
 import logging
 import shutil
 
-from ..utils.environment import OUTPUT_DIR
+from ..utils.environment import OUTPUT_DIR, STATIC_DIR
 from ..utils.compress import create_tarball
 
 
@@ -95,12 +95,14 @@ async def backup_mongo(name: str, port: int, request: Request):
 
     return {
         "backup_summary": backup_summary,
-        "backup_url": os.path.join(request.base_url._url, output_filename),
+        "backup_url": os.path.join(
+            request.base_url._url, os.path.join(STATIC_DIR, f"{this_name}.tar.gz")
+        ),
     }
 
 
 @router.get("/directory")
-async def backup_mongo(name: str, remote_path: str, request: Request):
+async def backup_dir(name: str, remote_path: str, request: Request):
     if not os.path.exists(remote_path):
         raise HTTPException(status_code=404, detail=f"'{remote_path}' does not exist!")
 
@@ -128,4 +130,8 @@ async def backup_mongo(name: str, remote_path: str, request: Request):
 
     logger.info(f"'{remote_path}' copied directory successfully cleaned!")
 
-    return {"backup_url": os.path.join(request.base_url._url, output_filename)}
+    return {
+        "backup_url": os.path.join(
+            request.base_url._url, os.path.join(STATIC_DIR, f"{this_name}.tar.gz")
+        )
+    }

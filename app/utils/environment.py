@@ -10,3 +10,4 @@ def get_required_env(key: str) -> str:
 
 OUTPUT_DIR = os.path.join(get_required_env("OUTPUT_DIR"), "static")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+STATIC_DIR = os.path.basename(OUTPUT_DIR)
