@@ -95,5 +95,37 @@ async def backup_mongo(name: str, port: int, request: Request):
 
     return {
         "backup_summary": backup_summary,
-        "output_filename": os.path.join(request.base_url._url, output_filename),
+        "backup_url": os.path.join(request.base_url._url, output_filename),
     }
+
+
+@router.get("/directory")
+async def backup_mongo(name: str, remote_path: str, request: Request):
+    if not os.path.exists(remote_path):
+        raise HTTPException(status_code=404, detail=f"'{remote_path}' does not exist!")
+
+    this_name = (
+        f"directory-{name}-{int(datetime.now(tz=timezone.utc).timestamp() * 1000)}"
+    )
+    output_dir = os.path.join(OUTPUT_DIR, this_name)
+
+    if os.path.isdir(remote_path):
+        logger.info(f"'{remote_path}' is a directory!")
+        shutil.copytree(remote_path, output_dir)
+    else:
+        logger.info(f"'{remote_path}' is a file!")
+        os.makedirs(output_dir, exist_ok=True)
+        shutil.copy(remote_path, output_dir)
+
+    logger.info(f"'{remote_path}' successfully copied!")
+
+    output_filename = os.path.join(OUTPUT_DIR, f"{this_name}.tar.gz")
+    create_tarball(output_filename=output_filename, source_dir=output_dir)
+
+    logger.info(f"'{remote_path}' successfully tarballed!")
+
+    shutil.rmtree(output_dir)
+
+    logger.info(f"'{remote_path}' copied directory successfully cleaned!")
+
+    return {"backup_url": os.path.join(request.base_url._url, output_filename)}
