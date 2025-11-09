@@ -141,7 +141,7 @@ async def backup_dir(name: str, remote_path: str, request: Request):
 async def delete_backup(tarball_name: str):
     backup_path = os.path.join(STATIC_DIR, tarball_name)
 
-    if not os.path.exists(backup_dir):
+    if not os.path.exists(backup_path):
         raise HTTPException(status_code=404, detail=f"'{backup_path}' does not exist!")
 
     os.remove(backup_path)
