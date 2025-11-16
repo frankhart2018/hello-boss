@@ -7,9 +7,11 @@ import json
 from bson import json_util
 import logging
 import shutil
+import subprocess
 
 from ..utils.environment import OUTPUT_DIR, STATIC_DIR
 from ..utils.compress import create_tarball
+from ..utils.permissions import check_sudo_permissions
 
 
 router = APIRouter()
@@ -135,6 +137,103 @@ async def backup_dir(name: str, remote_path: str, request: Request):
             request.base_url._url, os.path.join(STATIC_DIR, f"{this_name}.tar.gz")
         )
     }
+
+
+@router.get("/directory/sudo")
+async def backup_dir_sudo(name: str, remote_path: str, request: Request):
+    required_commands = ["/bin/cp", "/usr/bin/chown", "/bin/mv", "/bin/rm"]
+    has_permissions, message = check_sudo_permissions(required_commands)
+
+    if not has_permissions:
+        logger.error(f"Sudo permission check failed: {message}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server configuration error: {message}. Please configure passwordless sudo for required commands.",
+        )
+
+    logger.info("Sudo permissions verified successfully")
+
+    if not os.path.exists(remote_path):
+        raise HTTPException(status_code=404, detail=f"'{remote_path}' does not exist!")
+
+    this_name = (
+        f"directory-{name}-{int(datetime.now(tz=timezone.utc).timestamp() * 1000)}"
+    )
+    output_dir = os.path.join(OUTPUT_DIR, this_name)
+
+    try:
+        if os.path.isdir(remote_path):
+            logger.info(f"'{remote_path}' is a directory!")
+
+            os.makedirs(output_dir, exist_ok=True)
+
+            subprocess.run(
+                ["sudo", "cp", "-r", remote_path, OUTPUT_DIR],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            copied_dir = os.path.join(OUTPUT_DIR, os.path.basename(remote_path))
+            if copied_dir != output_dir:
+                subprocess.run(["sudo", "mv", copied_dir, output_dir], check=True)
+
+            subprocess.run(
+                [
+                    "sudo",
+                    "chown",
+                    "-R",
+                    f'{os.getenv("USER")}:{os.getenv("USER")}',
+                    output_dir,
+                ],
+                check=True,
+            )
+        else:
+            logger.info(f"'{remote_path}' is a file!")
+            os.makedirs(output_dir, exist_ok=True)
+
+            subprocess.run(
+                ["sudo", "cp", remote_path, output_dir],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            subprocess.run(
+                [
+                    "sudo",
+                    "chown",
+                    "-R",
+                    f'{os.getenv("USER")}:{os.getenv("USER")}',
+                    output_dir,
+                ],
+                check=True,
+            )
+
+        logger.info(f"'{remote_path}' successfully copied!")
+
+        output_filename = os.path.join(OUTPUT_DIR, f"{this_name}.tar.gz")
+        create_tarball(output_filename=output_filename, source_dir=output_dir)
+
+        logger.info(f"'{remote_path}' successfully tarballed!")
+
+        shutil.rmtree(output_dir)
+
+        logger.info(f"'{remote_path}' copied directory successfully cleaned!")
+
+        return {
+            "backup_url": os.path.join(
+                request.base_url._url, os.path.join(STATIC_DIR, f"{this_name}.tar.gz")
+            )
+        }
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Sudo copy failed: {e.stderr}")
+        if os.path.exists(output_dir):
+            subprocess.run(["sudo", "rm", "-rf", output_dir], check=False)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to copy with sudo: {e.stderr}"
+        )
 
 
 @router.get("/delete")
