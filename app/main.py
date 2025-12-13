@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import logging
 
-from .routers import nginx, backup
+from .routers import nginx, backup, status
 from .utils.environment import OUTPUT_DIR
 
 
@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(nginx.router, prefix="/nginx", tags=["nginx"])
 app.include_router(backup.router, prefix="/backup", tags=["backup"])
+app.include_router(status.router, prefix="/status", tags=["server-stats"])
 app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
 
 
